@@ -65,14 +65,14 @@ export function stageShot(name, state) {
     car.playerDriven = true;
     p.x = car.x;
     p.y = car.y;
-    for (const [back, speed] of [[95, 330], [185, 310], [285, 296]]) {
+    for (const [back, speed] of [[120, 322], [215, 308], [320, 292]]) {
       const cop = makeCar('police', 330 - back, 2269, 0, '#e8ecf2', 'police');
       cop.speed = speed;
       state.cars.push(cop);
     }
     state.wanted.heat = 3;
     state.aim = { x: p.x + 500, y: p.y };
-    run(state, drivingInput(), 3.9);
+    run(state, drivingInput(), 2.4);
     state.aim = { x: p.x + 500, y: p.y - 10 };
     return { screen: SCREEN_PLAY };
   }

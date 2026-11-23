@@ -15,9 +15,9 @@ export const WORLD = {
   roadWidth: 116,
   /** Sidewalk band inside each block edge. */
   sidewalk: 16,
-  /** The sea starts at this y; a sand beach band lies just above it. */
-  waterY: 2330,
-  beachY: 2226,
+  /** The sea starts at this y; a sand beach band lies just above it (city.js derives both). */
+  waterY: 2368,
+  beachY: 2298,
 };
 
 /** Lane offset from a road's centre line: right-hand traffic. */
@@ -42,6 +42,7 @@ export const CAR = {
   accel: 340,
   brake: 520,
   reverseMax: 120,
+  drag: 0.6,
   gripTurn: 2.6,
   health: 100,
 };

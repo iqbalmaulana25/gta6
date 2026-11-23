@@ -115,19 +115,19 @@ function drawHud(ctx, state, canvas) {
   // Objective, top left.
   if (m?.objective) {
     const distM = Math.max(0, Math.round(Math.hypot(p.x - m.objective.x, p.y - m.objective.y) / 10));
-    panel(ctx, 16, 16, 356, 58);
+    panel(ctx, 16, 16, 404, 58);
     ctx.font = `700 11px ${FONT}`;
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffd23e';
     ctx.fillText((m.objective.sub || 'FREE ROAM').toUpperCase(), 30, 38);
     ctx.font = `600 15px ${FONT}`;
     ctx.fillStyle = PALETTE.text;
-    const text = m.objective.text.length > 40 ? `${m.objective.text.slice(0, 39)}…` : m.objective.text;
+    const text = m.objective.text.length > 44 ? `${m.objective.text.slice(0, 43)}…` : m.objective.text;
     ctx.fillText(text, 30, 60);
     ctx.font = `700 15px ${FONT}`;
     ctx.fillStyle = '#ffd23e';
     ctx.textAlign = 'right';
-    ctx.fillText(`${distM}m`, 358, 60);
+    ctx.fillText(`${distM}m`, 406, 60);
     ctx.textAlign = 'left';
   }
   // Money, stars, health, top right.

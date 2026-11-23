@@ -248,7 +248,7 @@ export function updateMissions(state, dt) {
   } else if (step.kind === 'shootout') {
     const at = landmarkPoint(state, step.at);
     const alive = step.hostiles.filter((h) => !h.dead).length;
-    m.objective = { x: at.x, y: at.y, text: `${step.text} — ${alive} left`, sub: a.def.title };
+    m.objective = { x: at.x, y: at.y, text: `Dockside smugglers — ${alive} left`, sub: a.def.title };
     if (alive === 0 && step.t > 0.5) finish();
   }
 }

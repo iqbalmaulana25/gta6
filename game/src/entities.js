@@ -265,6 +265,10 @@ function updatePed(state, ped, dt) {
     ped.fleeTime -= dt;
     wantAngle = Math.atan2(ped.y - ped.fleeFrom.y, ped.x - ped.fleeFrom.x);
     wantSpeed = 235;
+  } else if (!ped.police && !ped.hostile && trafficThreat(state, ped)) {
+    const threat = trafficThreat(state, ped);
+    wantAngle = Math.atan2(ped.y - threat.y, ped.x - threat.x);
+    wantSpeed = 220;
   } else {
     if (!ped.target || Math.hypot(ped.target.x - ped.x, ped.target.y - ped.y) < 16) {
       for (let tries = 0; tries < 8; tries += 1) {
@@ -288,6 +292,15 @@ function updatePed(state, ped, dt) {
     ped.y = fixed.y;
   }
   ped.walkPhase += dt * Math.abs(ped.speed) * 0.09;
+}
+
+/** The nearest moving car close enough to make a pedestrian jump out of the road. */
+function trafficThreat(state, ped) {
+  for (const car of state.cars) {
+    if (car.dead || Math.abs(car.speed) < 55) continue;
+    if (Math.hypot(car.x - ped.x, car.y - ped.y) < 46) return car;
+  }
+  return null;
 }
 
 export function scarePeds(state, x, y, range) {
@@ -365,6 +378,27 @@ function updatePoliceCar(state, car, dt) {
   if (Math.hypot(fixed.x - car.x, fixed.y - car.y) > 2) car.speed *= 0.55;
   car.x = fixed.x;
   car.y = fixed.y;
+  // Keep cruisers out of the other cars' bodywork: shove overlapping cars apart.
+  for (const other of state.cars) {
+    if (other === car || other.dead) continue;
+    const dx = other.x - car.x;
+    const dy = other.y - car.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < 42 * 42 && d2 > 0.01) {
+      const d = Math.sqrt(d2);
+      const push = (42 - d) / 2;
+      other.x += (dx / d) * push;
+      other.y += (dy / d) * push;
+      car.x -= (dx / d) * push;
+      car.y -= (dy / d) * push;
+      if (Math.abs(car.speed) > 120) {
+        car.health -= 2;
+        spawnParticles(state, car.x + dx / 2, car.y + dy / 2, 5, '#ffd76a', 150, 0.3, 3);
+        state.hooks.onSound('crash');
+      }
+      car.speed *= 0.8;
+    }
+  }
   // A cruiser alongside a walking player is a bust in progress.
   if (!p.car && d < POLICE.bustRange + 14 && Math.abs(car.speed) < 130) {
     p.bustMeter = Math.min(1, p.bustMeter + dt / POLICE.bustTime);

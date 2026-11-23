@@ -57,19 +57,20 @@ export function stageShot(name, state) {
     // On Ocean Drive, in a Comet, three stars up and the warehouse job on the clock.
     run(state, idleInput(), 0.2);
     const car = makeCar('sport', 330, 2269, 0, '#e8b10e', 'player');
+    car.speed = 120;
     state.cars.push(car);
     p.car = car;
     car.playerDriven = true;
     p.x = car.x;
     p.y = car.y;
-    for (const back of [130, 250]) {
+    for (const [back, speed] of [[95, 330], [185, 310]]) {
       const cop = makeCar('police', 330 - back, 2269, 0, '#e8ecf2', 'police');
-      cop.speed = 240;
+      cop.speed = speed;
       state.cars.push(cop);
     }
     state.wanted.heat = 3;
     state.aim = { x: p.x + 500, y: p.y };
-    run(state, drivingInput(), 6.4);
+    run(state, drivingInput(), 3.9);
     state.aim = { x: p.x + 500, y: p.y - 10 };
     return { screen: SCREEN_PLAY };
   }

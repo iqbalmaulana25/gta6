@@ -1,11 +1,13 @@
-// The screenshot scenes behind ?shot=title|cover|foot|marina. Each one builds a fresh world
-// from the seed and plays the real rules forward — traffic, police and gunfire are the game's
-// own systems, never props — with a scripted driver or walker at the controls, so the frame
-// is what play actually looks like: the cover is a genuine three-star chase down Ocean Drive
-// with the mission marker up, and the marina scene is the Dockside Noise shootout mid-fight.
+// The screenshot scenes behind ?shot=title|cover|foot|marina|roadblock. Each one builds a
+// fresh world from the seed and plays the real rules forward — traffic, police and gunfire
+// are the game's own systems, never props — with a scripted driver or walker at the
+// controls, so the frame is what play actually looks like: the cover is a genuine
+// three-star chase down Ocean Drive with the mission marker up, the marina scene is the
+// Dockside Noise shootout mid-fight, and the roadblock scene is the Solano Score's second
+// beat, five stars up with the PSPD line across the avenue ahead.
 
 import { STEP } from './config.js';
-import { makeCar, updateGame } from './entities.js';
+import { makeCar, setRoadblock, updateGame } from './entities.js';
 import { updateMissions } from './missions.js';
 import { SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 
@@ -63,7 +65,7 @@ export function stageShot(name, state) {
     car.playerDriven = true;
     p.x = car.x;
     p.y = car.y;
-    for (const [back, speed] of [[95, 330], [185, 310]]) {
+    for (const [back, speed] of [[95, 330], [185, 310], [285, 296]]) {
       const cop = makeCar('police', 330 - back, 2269, 0, '#e8ecf2', 'police');
       cop.speed = speed;
       state.cars.push(cop);
@@ -102,6 +104,36 @@ export function stageShot(name, state) {
       updateGame(state, firing, NO_ACTIONS, STEP);
       updateMissions(state, STEP);
     }
+    return { screen: SCREEN_PLAY };
+  }
+  if (name === 'roadblock') {
+    // The Solano Score, beat two: the bag is grabbed, the alarm has pinned five stars up,
+    // and headquarters has parked a line of cruisers across the avenue ahead while the
+    // pursuit closes from behind — wanted stars, minimap and the boat objective in frame.
+    state.missions.nextIndex = 7;
+    run(state, idleInput(), 0.2);
+    const bank = city.landmarks.bank;
+    p.x = bank.doorX;
+    p.y = bank.doorY;
+    updateMissions(state, STEP);
+    updateMissions(state, STEP);
+    const avenue = city.roadsX[5];
+    const car = makeCar('sport', avenue, 1560, Math.PI / 2, '#e8b10e', 'player');
+    car.speed = 300;
+    state.cars.push(car);
+    p.car = car;
+    car.playerDriven = true;
+    p.x = car.x;
+    p.y = car.y;
+    setRoadblock(state, avenue, 2050, false);
+    for (const back of [150, 265]) {
+      const cop = makeCar('police', avenue - 20, 1560 - back, Math.PI / 2, '#e8ecf2', 'police');
+      cop.speed = 320;
+      state.cars.push(cop);
+    }
+    state.aim = { x: p.x, y: p.y + 500 };
+    run(state, drivingInput(), 0.95);
+    state.aim = { x: p.x, y: p.y + 500 };
     return { screen: SCREEN_PLAY };
   }
   // Title: the city idles behind the menu — traffic, strollers, the sea.

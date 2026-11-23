@@ -93,6 +93,7 @@ export function createCity(rng) {
   const docks = landmark(6, 4, 'Marina Warehouse');
   const policeStation = landmark(5, 0, 'Port Solano PD');
   const hospital = landmark(1, 0, 'Solano General Hospital');
+  const safehouse = landmark(0, 3, 'Calle Ocho Safehouse');
 
   for (let col = 0; col < ROAD_X.length - 1; col += 1) {
     for (let row = 0; row < ROAD_Y.length - 1; row += 1) {
@@ -163,7 +164,9 @@ export function createCity(rng) {
     const b = buildings[rng.int(0, buildings.length - 1)];
     spots.push({ x: b.x - 20, y: b.y + b.h + 20 });
   }
-  for (let i = 0; i < 20; i += 1) packages.push({ id: i, x: spots[i].x, y: spots[i].y, taken: false });
+  // Which spots hold a palm changes with the seed: shuffle the candidates, take twenty.
+  const shuffled = rng.shuffle(spots);
+  for (let i = 0; i < 20; i += 1) packages.push({ id: i, x: shuffled[i].x, y: shuffled[i].y, taken: false });
 
   return {
     roadsX: ROAD_X,
@@ -176,7 +179,7 @@ export function createCity(rng) {
     piers,
     boat,
     packages,
-    landmarks: { cafe, hotel, bank, garage, docks, policeStation, hospital },
+    landmarks: { cafe, hotel, bank, garage, docks, policeStation, hospital, safehouse },
     beach: { x: 0, y: BEACH_Y, w: WORLD.width, h: WATER_Y - BEACH_Y },
     water: { x: 0, y: WATER_Y, w: WORLD.width, h: WORLD.height - WATER_Y },
   };

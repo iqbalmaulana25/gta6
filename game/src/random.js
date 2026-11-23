@@ -24,6 +24,15 @@ export function createRandom(seed) {
     pick(items) {
       return items[Math.floor(next() * items.length)];
     },
+    /** A shuffled copy of the array (Fisher–Yates on this source); the original is kept. */
+    shuffle(items) {
+      const out = [...items];
+      for (let i = out.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(next() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    },
     /** True with probability p. */
     chance(p) {
       return next() < p;
@@ -31,6 +40,10 @@ export function createRandom(seed) {
     /** -1 or 1, coin flip. */
     sign() {
       return next() < 0.5 ? -1 : 1;
+    },
+    /** A direction in radians, uniform over the circle. */
+    angle() {
+      return next() * Math.PI * 2;
     },
   };
 }

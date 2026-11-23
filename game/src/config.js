@@ -73,6 +73,8 @@ export const WANTED = {
 
 export const POLICE = {
   carSpeed: 392,
+  /** Seconds of travel a pursuing cruiser aims ahead of a moving target. */
+  leadTime: 0.5,
   footSpeed: 196,
   sightRange: 560,
   bustRange: 30,
@@ -80,6 +82,36 @@ export const POLICE = {
   shootRange: 330,
   shootCooldown: 1.15,
   gunDamage: 7,
+};
+
+/** How headquarters answers a rising wanted level: cruisers sent in waves, and — once the
+ * chase is hot enough — a line of them parked across the road ahead of the player. */
+export const DISPATCH = {
+  /** Seconds between waves while the player is at two stars or more. */
+  waveInterval: 9,
+  /** Cruisers sent per wave. */
+  waveSize: 2,
+  /** Stars at which roadblocks start appearing. */
+  roadblockStars: 4,
+  /** How far ahead of the player a roadblock is set, in pixels. */
+  roadblockAhead: 430,
+  /** Seconds between roadblocks while the heat stays up. */
+  roadblockEvery: 16,
+  /** Seconds a roadblock stands before its cruisers join the pursuit. */
+  roadblockLife: 30,
+};
+
+/** Objective marker colours by step kind: the HUD panel, the minimap blip and the light
+ * beam in the world all speak the same colour per kind of job step. */
+export const MARKER_COLORS = {
+  go: '#ffd23e',
+  crate: '#ffb35c',
+  car: '#7fd4ff',
+  eye: '#c9a7ff',
+  cross: '#ff5147',
+  boat: '#53d769',
+  house: '#ffe9a8',
+  star: '#ff9d2e',
 };
 
 export const TRAFFIC = {

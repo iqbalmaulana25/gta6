@@ -4,7 +4,7 @@
 // furniture — HUD, minimap, menus — lives in hud.js; this file paints only the world and the
 // people and machines in it.
 
-import { CAR, FONT, PALETTE, WORLD } from './config.js';
+import { CAR, FONT, MARKER_COLORS, PALETTE, WORLD } from './config.js';
 import { BEACH_Y, WATER_Y } from './city.js';
 import { starsOf } from './entities.js';
 
@@ -129,6 +129,12 @@ export function createRenderer(canvas) {
       ctx.textAlign = 'center';
       ctx.fillStyle = PALETTE.policeTrim;
       ctx.fillText('PD', 2, -6);
+      if (car.roadblock) {
+        // The roadblock livery: amber bands along both flanks, visible across the street.
+        ctx.fillStyle = '#ff9d2e';
+        ctx.fillRect(-CAR.length / 2 + 2, -CAR.width / 2 + 1, CAR.length - 4, 3);
+        ctx.fillRect(-CAR.length / 2 + 2, CAR.width / 2 - 4, CAR.length - 4, 3);
+      }
     }
     if (car.kind === 'taxi') {
       ctx.fillStyle = '#14181d';
@@ -352,13 +358,17 @@ export function createRenderer(canvas) {
     ctx.globalAlpha = 1;
     const objective = state.missions?.objective;
     if (objective && screen === 'play') {
+      // The beam burns in the step kind's own colour, the one the HUD and minimap use.
+      const hex = MARKER_COLORS[objective.mark] ?? '#ffd23e';
+      const n = Number.parseInt(hex.slice(1), 16);
+      const rgb = `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
       const pulse = 0.75 + Math.sin(t * 5) * 0.25;
       const grad = ctx.createLinearGradient(0, objective.y - 300, 0, objective.y);
-      grad.addColorStop(0, 'rgba(255,210,62,0)');
-      grad.addColorStop(1, `rgba(255,210,62,${0.35 * pulse})`);
+      grad.addColorStop(0, `rgba(${rgb},0)`);
+      grad.addColorStop(1, `rgba(${rgb},${0.35 * pulse})`);
       ctx.fillStyle = grad;
       ctx.fillRect(objective.x - 13, objective.y - 300, 26, 300);
-      ctx.fillStyle = PALETTE.marker;
+      ctx.fillStyle = hex;
       ctx.beginPath();
       ctx.arc(objective.x, objective.y, 17 * pulse + 6, 0, Math.PI * 2);
       ctx.globalAlpha = 0.3;

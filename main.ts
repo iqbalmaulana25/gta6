@@ -7,6 +7,11 @@
 // make.fun library, so the sealed scorer can rebuild the same dossier from the same files
 // and compare the two byte for byte.
 //
+// The game in game/ is the eight-job Solano Heat story: Lena Costa's jobs (a courier run, a
+// stolen Comet GT, a quiet tail, a dockside shootout, a timed freight, a heat sink, a
+// dockyard payback and the two-beat Solano Score), PSPD dispatch waves and roadblocks, and
+// the five-star wanted system that answers them.
+//
 // Run it the way the grader does (Node 22, standard library only):
 //   node main.ts                          — writes to /output
 //   MAKEFUN_OUTPUT_DIR=out node main.ts   — writes to ./out outside the grader
@@ -60,4 +65,5 @@ writeFileSync(join(out, 'dossier.json'), buildDossier(out, GATE));
 
 const game = countTree(join(out, 'game'));
 const shots = existsSync(join(out, 'screenshots')) ? readdirSync(join(out, 'screenshots')).length : 0;
-console.log(`Solano Heat handed in: ${game.files} game files (${game.bytes} bytes), ${shots} screenshots, dossier.json written to ${out}`);
+const dossierBytes = statSync(join(out, 'dossier.json')).size;
+console.log(`Solano Heat handed in: ${game.files} game files (${game.bytes} bytes), ${shots} screenshots, dossier.json (${dossierBytes} bytes) written to ${out}`);

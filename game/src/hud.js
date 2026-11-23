@@ -3,7 +3,7 @@
 // how-to, pause, busted, wasted and story complete. Pure canvas drawing in screen space;
 // main.js decides which screen is up.
 
-import { CITY_NAME, FONT, GAME_TITLE, PALETTE, PLAYER, WORLD } from './config.js';
+import { CITY_NAME, FONT, GAME_TITLE, MARKER_COLORS, PALETTE, PLAYER, WORLD } from './config.js';
 import { getNearestCar, starsOf } from './entities.js';
 import { SCREEN_BUSTED, SCREEN_COMPLETE, SCREEN_HOWTO, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 
@@ -72,6 +72,12 @@ function drawMinimap(ctx, state, x, y, w, h) {
   }
   for (const car of state.cars) {
     if (car.driver !== 'police' || car.dead) continue;
+    if (car.roadblock) {
+      // A roadblock stands out from the chase: a steady amber block, not a flashing blip.
+      ctx.fillStyle = '#ff9d2e';
+      ctx.fillRect(x + car.x * sx - 3, y + car.y * sy - 3, 6, 6);
+      continue;
+    }
     ctx.fillStyle = Math.floor(state.time * 4) % 2 ? '#ff5147' : '#4f8dff';
     ctx.fillRect(x + car.x * sx - 2, y + car.y * sy - 2, 4, 4);
   }
@@ -82,10 +88,26 @@ function drawMinimap(ctx, state, x, y, w, h) {
   }
   const objective = state.missions?.objective;
   if (objective) {
+    // The marker's shape and colour say what kind of step it is: a cross for a fight, a
+    // triangle for the boat or a drawn-out star, a square for a car or the safehouse.
     const pulse = 2.4 + Math.sin(state.time * 5) * 1.1;
-    ctx.fillStyle = PALETTE.marker;
+    const ox = x + objective.x * sx;
+    const oy = y + objective.y * sy;
+    ctx.fillStyle = MARKER_COLORS[objective.mark] ?? PALETTE.marker;
     ctx.beginPath();
-    ctx.arc(x + objective.x * sx, y + objective.y * sy, pulse + 1.6, 0, Math.PI * 2);
+    if (objective.mark === 'cross') {
+      ctx.rect(ox - pulse - 1.6, oy - 1.4, (pulse + 1.6) * 2, 2.8);
+      ctx.rect(ox - 1.4, oy - pulse - 1.6, 2.8, (pulse + 1.6) * 2);
+    } else if (objective.mark === 'car' || objective.mark === 'house') {
+      ctx.rect(ox - pulse - 1, oy - pulse - 1, (pulse + 1) * 2, (pulse + 1) * 2);
+    } else if (objective.mark === 'boat' || objective.mark === 'star') {
+      ctx.moveTo(ox, oy - pulse - 2.2);
+      ctx.lineTo(ox + pulse + 1.2, oy + pulse + 1.2);
+      ctx.lineTo(ox - pulse - 1.2, oy + pulse + 1.2);
+      ctx.closePath();
+    } else {
+      ctx.arc(ox, oy, pulse + 1.6, 0, Math.PI * 2);
+    }
     ctx.fill();
   }
   // The player, an arrow that turns with them.
@@ -118,7 +140,7 @@ function drawHud(ctx, state, canvas) {
     panel(ctx, 16, 16, 404, 58);
     ctx.font = `700 11px ${FONT}`;
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffd23e';
+    ctx.fillStyle = MARKER_COLORS[m.objective.mark] ?? '#ffd23e';
     ctx.fillText((m.objective.sub || 'FREE ROAM').toUpperCase(), 30, 38);
     ctx.font = `600 15px ${FONT}`;
     ctx.fillStyle = PALETTE.text;
@@ -137,6 +159,14 @@ function drawHud(ctx, state, canvas) {
   ctx.fillText(`$${p.money.toLocaleString('en-US')}`, W - 20, 42);
   const stars = starsOf(state);
   drawStars(ctx, W - 158, 74, stars, state.time);
+  // A standing roadblock is the one thing the chase wants announced at a glance.
+  if (state.cars.some((c) => c.roadblock && !c.dead)) {
+    ctx.font = `800 15px ${FONT}`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = Math.floor(state.time * 5) % 2 ? '#ff9d2e' : '#ffd23e';
+    ctx.fillText('— ROADBLOCK ACTIVE —', W / 2, 36);
+    ctx.textAlign = 'left';
+  }
   if (stars > 0 && !state.wanted.seen && state.wanted.unseenTime > 1) {
     ctx.font = `700 11px ${FONT}`;
     ctx.fillStyle = 'rgba(245,242,233,0.8)';
@@ -210,7 +240,7 @@ function drawHud(ctx, state, canvas) {
   ctx.font = `600 12.5px ${FONT}`;
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(245,242,233,0.85)';
-  let hint = 'WASD drive/walk · mouse aim · click shoot · F punch · E car · P pause';
+  let hint = 'WASD drive/walk · mouse aim · click shoot · F punch · E car · H horn · P pause';
   if (!p.car && getNearestCar(state)) hint = 'E — get in the car';
   if (p.car) hint = 'WASD drive · Space handbrake · E get out';
   ctx.fillText(hint, W / 2, H - 14);
@@ -276,15 +306,16 @@ export function createHud(canvas) {
           '',
           'WASD / arrows — walk and drive        Shift — sprint',
           'Mouse — aim · Click — shoot           F — punch · R — reload',
-          'E — steal / enter / leave a car       Space — handbrake',
+          'E — steal / enter / leave a car       Space — handbrake · H — horn',
           'P or Esc — pause · F5 — save',
           '',
-          'Crimes raise your stars. Stars bring cruisers, cruisers bring officers,',
-          'and an officer who reaches you fills the red ring: busted.',
+          'Crimes raise your stars. Stars bring cruisers in dispatch waves, and at four',
+          'stars headquarters parks roadblocks across the road ahead of you.',
+          'Cruisers bring officers, and an officer who reaches you fills the red ring: busted.',
           'Break their line of sight and the heat cools. Wrecked or busted, you wake up',
           'at the hospital or the station, lighter in the wallet.',
           '',
-          'Finish Lena\'s five jobs to close the story — then the city is yours:',
+          'Finish Lena\'s eight jobs to close the story — then the city is yours:',
           'twenty golden palms are hidden on rooftops\' edges, piers, parks and lots.',
         ];
         lines.forEach((line, i) => ctx.fillText(line, W / 2, 168 + i * 27));

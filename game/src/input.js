@@ -1,53 +1,84 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// Keyboard and mouse, read as state the simulation polls each step: held keys by code, the
+// mouse position in screen pixels and its buttons, plus edge-triggered actions (interact,
+// pause, confirm) that fire once per press however long the key stays down.
 
-export const ACTION_CONFIRM = 1;
+export const ACTION_INTERACT = 1;
 export const ACTION_PAUSE = 2;
+export const ACTION_CONFIRM = 4;
+export const ACTION_SAVE = 8;
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
+const ACTION_KEYS = {
+  KeyE: ACTION_INTERACT,
+  Escape: ACTION_PAUSE,
+  KeyP: ACTION_PAUSE,
+  Enter: ACTION_CONFIRM,
+  Space: ACTION_CONFIRM,
+  F5: ACTION_SAVE,
+};
 
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
+export function createInput(canvas) {
+  const keys = new Set();
+  const mouse = { x: 0, y: 0, down: false, rightDown: false };
+  let pendingActions = 0;
 
   window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
+    if (event.repeat) return;
+    keys.add(event.code);
+    const action = ACTION_KEYS[event.code];
+    if (action) {
+      pendingActions |= action;
+      if (action === ACTION_PAUSE || action === ACTION_SAVE) event.preventDefault();
+    }
+    if (event.code === 'Space') event.preventDefault();
   });
   window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
+    keys.delete(event.code);
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
   window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+    keys.clear();
+    mouse.down = false;
+    mouse.rightDown = false;
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
+  canvas.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = event.clientX - rect.left;
+    mouse.y = event.clientY - rect.top;
   });
+  canvas.addEventListener('mousedown', (event) => {
+    if (event.button === 0) {
+      mouse.down = true;
+      pendingActions |= ACTION_CONFIRM;
+    }
+    if (event.button === 2) mouse.rightDown = true;
+  });
+  window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) mouse.down = false;
+    if (event.button === 2) mouse.rightDown = false;
+  });
+  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
   return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
+    keys,
+    mouse,
+    /** True while any of the given key codes is held. */
+    held(...codes) {
+      return codes.some((code) => keys.has(code));
     },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
+    /** The actions pressed since the last call; clears them. */
     takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
+      const actions = pendingActions;
+      pendingActions = 0;
+      return actions;
+    },
+    /** Movement axes from the keys: x and y each in -1..1 (unnormalised). */
+    moveAxes() {
+      let x = 0;
+      let y = 0;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) y -= 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) y += 1;
+      return { x, y };
     },
   };
 }

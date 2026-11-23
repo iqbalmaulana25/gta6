@@ -1,61 +1,138 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
-
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
+// Solano Heat — every tuning number, colour and name in one place.
+// The world is a fixed 3360x2520 field of pixels; the renderer fits the camera view to the
+// window, so no rule below depends on the screen size. Nothing here is borrowed from any
+// commercial game: Port Solano, its people and its story are this game's own.
 
 /** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
 export const STEP = 1 / 60;
 
+export const WORLD = {
+  width: 3360,
+  height: 2520,
+  /** Road centre lines sit on this pitch, in both directions. */
+  pitch: 420,
+  /** Full width of a road, kerb to kerb. */
+  roadWidth: 116,
+  /** Sidewalk band inside each block edge. */
+  sidewalk: 16,
+  /** The sea starts at this y; a sand beach band lies just above it. */
+  waterY: 2330,
+  beachY: 2226,
+};
+
+/** Lane offset from a road's centre line: right-hand traffic. */
+export const LANE = 29;
+
 export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+  radius: 13,
+  walkSpeed: 168,
+  sprintSpeed: 262,
+  health: 100,
+  punchRange: 40,
+  punchDamage: 34,
+  gunDamage: 42,
+  gunCooldown: 0.24,
+  magazine: 12,
+  enterRange: 58,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+export const CAR = {
+  length: 52,
+  width: 26,
+  accel: 340,
+  brake: 520,
+  reverseMax: 120,
+  gripTurn: 2.6,
+  health: 100,
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
+/** Per-kind driving character: top speed in px/s and how eagerly it turns. */
+export const CAR_KINDS = {
+  sedan: { topSpeed: 342, turn: 1.0, label: 'Marina Sedan' },
+  taxi: { topSpeed: 330, turn: 1.0, label: 'Solano Cab' },
+  hatch: { topSpeed: 318, turn: 1.08, label: 'Palmetto Hatch' },
+  truck: { topSpeed: 268, turn: 0.8, label: 'Dockside Hauler' },
+  sport: { topSpeed: 468, turn: 1.12, label: 'Comet GT' },
+  police: { topSpeed: 402, turn: 1.05, label: 'Port Solano PD Cruiser' },
 };
 
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
+export const WANTED = {
+  /** Heat added per crime, before it is rounded up to stars for display. */
+  steal: 1,
+  hitPed: 1,
+  shoot: 0.6,
+  hitPolice: 1.6,
+  killPolice: 2,
+  max: 5,
+  /** Heat lost per second while no officer can see the player. */
+  decay: 0.055,
+  /** How long the player must stay unseen before decay starts, in seconds. */
+  hideTime: 4,
+};
 
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
+export const POLICE = {
+  carSpeed: 392,
+  footSpeed: 196,
+  sightRange: 560,
+  bustRange: 30,
+  bustTime: 1.15,
+  shootRange: 330,
+  shootCooldown: 1.15,
+  gunDamage: 7,
+};
+
+export const TRAFFIC = {
+  targetCars: 13,
+  targetPeds: 17,
+  spawnRange: 980,
+  despawnRange: 1250,
+};
 
 export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
+  grass: '#57a05a',
+  grassDark: '#4c8f52',
+  parkPath: '#cbb98a',
+  sand: '#ecd28f',
+  water: '#2e7fb8',
+  waterDeep: '#256a9c',
+  asphalt: '#3c4149',
+  asphaltDark: '#343943',
+  laneMark: '#e8e4d2',
+  kerb: '#9aa0a3',
+  sidewalk: '#b9bcb4',
+  plaza: '#cfc4a5',
+  roofTrim: '#00000022',
+  player: '#ffb340',
+  policeCar: '#e8ecf2',
+  policeTrim: '#274b8f',
+  marker: '#ffd23e',
+  markerSoft: '#ffd23e55',
+  danger: '#e5534b',
+  good: '#53d769',
+  text: '#f5f2e9',
+  panel: '#141a24cc',
+  panelEdge: '#ffffff2a',
 };
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+export const FONT = '"Avenir Next", "Segoe UI", system-ui, sans-serif';
 
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
+/** Sun-soaked building skins: wall colour, roof colour, floors of windows. */
+export const BUILDING_SKINS = [
+  { wall: '#f2d5a0', roof: '#d9a05b', floors: 3 },
+  { wall: '#e8e3d5', roof: '#b08968', floors: 5 },
+  { wall: '#f4b183', roof: '#c97b4a', floors: 4 },
+  { wall: '#dce9ec', roof: '#7fa3ad', floors: 7 },
+  { wall: '#f7ead7', roof: '#a26769', floors: 2 },
+  { wall: '#cfd8dc', roof: '#607d8b', floors: 9 },
+  { wall: '#ffe0b2', roof: '#e09f3e', floors: 6 },
+  { wall: '#e6c8c8', roof: '#96605f', floors: 3 },
+];
+
+/** Car paint jobs for civilian traffic. */
+export const CAR_PAINTS = ['#c94f42', '#3f7fbf', '#e0a51f', '#5da85f', '#d8d8d8', '#7a4f9e', '#3aa6a0', '#8c8c92', '#e57ba8'];
+
+/** Where progress is kept between visits (this browser only). */
+export const SAVE_KEY = 'solano-heat.save.v1';
+
+export const GAME_TITLE = 'SOLANO HEAT';
+export const CITY_NAME = 'Port Solano';

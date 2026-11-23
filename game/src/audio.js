@@ -137,6 +137,18 @@ export function createAudio() {
         sirenGain = null;
       }
     },
+    /** The dispatch radio: two clipped chirps and a breath of static. Rate drops the pitch
+     * for the roadblock call, which is the one the player learns to dread. */
+    dispatch(rate = 1) {
+      tone(1240 * rate, 0.07, 'square', 0.08);
+      tone(1240 * rate, 0.07, 'square', 0.08, 0.11);
+      noise(0.05, 0.05, 2400, 0.02);
+    },
+    /** A two-tone car horn, for traffic that will not move and crowds that should. */
+    horn() {
+      tone(370, 0.28, 'square', 0.11);
+      tone(466, 0.28, 'square', 0.09);
+    },
     music(on) {
       if (!wake()) return;
       if (on && !musicTimer) {
@@ -149,6 +161,7 @@ export function createAudio() {
       }
     },
     shot() { noise(0.14, 0.32, 2600); tone(150, 0.08, 'square', 0.12, 0, 60); },
+    alarm() { tone(880, 0.16, 'square', 0.1); tone(880, 0.16, 'square', 0.1, 0.22); tone(1174, 0.24, 'square', 0.1, 0.44); },
     punch() { noise(0.08, 0.25, 500); },
     hurt() { tone(110, 0.16, 'sawtooth', 0.16, 0, 55); },
     crash(big) { noise(big ? 0.4 : 0.2, big ? 0.4 : 0.22, 800); },

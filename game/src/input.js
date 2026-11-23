@@ -6,9 +6,11 @@ export const ACTION_INTERACT = 1;
 export const ACTION_PAUSE = 2;
 export const ACTION_CONFIRM = 4;
 export const ACTION_SAVE = 8;
+export const ACTION_HORN = 16;
 
 const ACTION_KEYS = {
   KeyE: ACTION_INTERACT,
+  KeyH: ACTION_HORN,
   Escape: ACTION_PAUSE,
   KeyP: ACTION_PAUSE,
   Enter: ACTION_CONFIRM,

@@ -3,14 +3,15 @@
 // play, paused, how-to, busted, wasted, story complete — are states over the same living
 // city, which idles behind the title menu with its traffic running.
 //
-// ?seed=N fixes the city. ?shot=title|cover|foot|marina (with &seed=N) stages that scene
-// instead of running the loop, paints it twice and sets window.__shotReady for a screenshot.
+// ?seed=N fixes the city. ?shot=title|cover|foot|marina|roadblock (with &seed=N) stages
+// that scene instead of running the loop, paints it twice and sets window.__shotReady for
+// a screenshot.
 
 import { SAVE_KEY, STEP } from './config.js';
 import { createRandom } from './random.js';
-import { createGame, EVENT_BUSTED, EVENT_WASTED, starsOf, updateGame } from './entities.js';
+import { createGame, EVENT_BUSTED, EVENT_WASTED, scarePeds, starsOf, updateGame } from './entities.js';
 import { attachMissions, failMission, restoreMissions, updateMissions } from './missions.js';
-import { ACTION_CONFIRM, ACTION_INTERACT, ACTION_PAUSE, ACTION_SAVE, createInput } from './input.js';
+import { ACTION_CONFIRM, ACTION_HORN, ACTION_INTERACT, ACTION_PAUSE, ACTION_SAVE, createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createRenderer, SCREEN_BUSTED, SCREEN_COMPLETE, SCREEN_HOWTO, SCREEN_OVER, SCREEN_PAUSED, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 import { createHud } from './hud.js';
@@ -55,9 +56,27 @@ function wireHooks(state) {
     else if (name === 'crash') audio.crash(false);
     else if (name === 'pickup') audio.pickup();
     else if (name === 'cash') audio.cash();
+    else if (name === 'alarm') audio.alarm();
     else if (name === 'mission') audio.mission();
     else if (name === 'fail') audio.fail();
     else if (name === 'ui') audio.ui();
+  };
+  state.hooks.onDispatch = (kind, sent) => {
+    if (kind === 'block') {
+      state.missions.banner = {
+        title: 'Roadblock ahead',
+        sub: 'The PSPD has blocked the road — find a way around',
+        t: 2.6,
+      };
+      audio.dispatch(0.7);
+    } else {
+      state.missions.banner = {
+        title: 'Dispatch',
+        sub: `Headquarters sends ${sent} more cruisers`,
+        t: 2.2,
+      };
+      audio.dispatch(1);
+    }
   };
   state.hooks.onPackage = () => {
     state.player.money += 50;
@@ -194,6 +213,14 @@ function runGame() {
         state.missions.banner = { title: 'Game saved', sub: 'Port Solano will remember this', t: 2.4 };
       }
       return { interact: false };
+    }
+    if (actions & ACTION_HORN) {
+      if (state.player.car) {
+        audio.horn();
+        scarePeds(state, state.player.x, state.player.y, 130);
+      } else {
+        audio.ui();
+      }
     }
     if (actions & ACTION_SAVE) {
       saveGame(state);

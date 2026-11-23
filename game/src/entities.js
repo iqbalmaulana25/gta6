@@ -5,8 +5,8 @@
 // state.hooks (onCrime, onSound, onWasted, onBusted), which main.js wires to the story,
 // the HUD and the synth.
 
-import { CAR, CAR_KINDS, CAR_PAINTS, LANE, PLAYER, POLICE, TRAFFIC, WANTED, WORLD } from './config.js';
-import { circleHitsSolid, createCity, inWater, laneOffset, pointOnRoad, randomRoadPoint, resolveCircle } from './city.js';
+import { CAR, CAR_KINDS, CAR_PAINTS, DISPATCH, LANE, PLAYER, POLICE, TRAFFIC, WANTED, WORLD } from './config.js';
+import { BEACH_Y, circleHitsSolid, createCity, inWater, laneOffset, pointOnRoad, randomRoadPoint, resolveCircle } from './city.js';
 
 export const EVENT_NONE = 0;
 export const EVENT_WASTED = 1;
@@ -44,6 +44,7 @@ export function makeCar(kind, x, y, angle, paint, driver) {
     health: CAR.health, driver, dead: false, brake: false, steerVis: 0,
     axis: null, dir: 1, fixed: 0, targetSpeed: 0, thinkTime: Math.random() * 0.4,
     blockedTime: 0, waypoint: null, officer: null, missionTag: null, hornTime: 0,
+    roadblock: false, blockExpires: 0,
   };
 }
 
@@ -68,9 +69,10 @@ export function createGame(rng) {
     },
     cars: [], peds: [], bullets: [], particles: [], skids: [],
     wanted: { heat: 0, unseenTime: 0, seen: false },
+    dispatch: { timer: 4, blockTimer: 6, wave: 0 },
     crimeCooldowns: { shoot: 0 },
     packagesFound: new Set(),
-    hooks: { onCrime() {}, onSound() {}, onWasted() {}, onBusted() {}, onPackage() {}, onEnterCar() {} },
+    hooks: { onCrime() {}, onSound() {}, onWasted() {}, onBusted() {}, onPackage() {}, onEnterCar() {}, onDispatch() {} },
     aim: { x: cafe.doorX, y: cafe.doorY - 60 },
     message: null,
   };
@@ -124,11 +126,11 @@ export function hurtPlayer(state, amount) {
 
 function spawnParticles(state, x, y, n, color, speed, life, size) {
   for (let i = 0; i < n; i += 1) {
-    const a = Math.random() * TAU;
-    const s = speed * (0.3 + Math.random() * 0.7);
+    const a = state.rng.angle();
+    const s = speed * (0.3 + state.rng.next() * 0.7);
     state.particles.push({
       x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-      life: life * (0.5 + Math.random() * 0.5), maxLife: life, color, size: size * (0.6 + Math.random() * 0.8),
+      life: life * (0.5 + state.rng.next() * 0.5), maxLife: life, color, size: size * (0.6 + state.rng.next() * 0.8),
     });
   }
   if (state.particles.length > 420) state.particles.splice(0, state.particles.length - 420);
@@ -329,6 +331,71 @@ function spawnPolice(state) {
   state.cars.push(car);
 }
 
+/**
+ * Park two cruisers across a road as a roadblock: side by side on a horizontal road
+ * (traffic runs along x) or on a vertical one, noses across the lanes, brake lights on.
+ * They are ordinary police cars with the roadblock flag; the step loop stands them still.
+ */
+export function setRoadblock(state, x, y, horizontal) {
+  const made = [];
+  for (const off of [-27, 27]) {
+    const car = makeCar(
+      'police',
+      horizontal ? x : x + off,
+      horizontal ? y + off : y,
+      horizontal ? Math.PI / 2 : 0,
+      '#e8ecf2',
+      'police',
+    );
+    car.roadblock = true;
+    car.blockExpires = state.time + DISPATCH.roadblockLife;
+    car.brake = true;
+    state.cars.push(car);
+    made.push(car);
+  }
+  return made;
+}
+
+/** Set a roadblock on the road the player is travelling, DISPATCH.roadblockAhead ahead. */
+function tryRoadblock(state) {
+  const p = state.player;
+  const city = state.city;
+  const heading = p.car ? p.car.angle : p.angle;
+  let nearX = Infinity;
+  let roadX = 0;
+  for (const x of city.roadsX) { const d = Math.abs(x - p.x); if (d < nearX) { nearX = d; roadX = x; } }
+  let nearY = Infinity;
+  let roadY = 0;
+  for (const y of city.roadsY) { const d = Math.abs(y - p.y); if (d < nearY) { nearY = d; roadY = y; } }
+  if (nearX <= 78 && Math.abs(Math.sin(heading)) > 0.4) {
+    const y = p.y + Math.sign(Math.sin(heading)) * DISPATCH.roadblockAhead;
+    if (y < 120 || y > BEACH_Y - 60) return false;
+    setRoadblock(state, roadX, y, false);
+    return true;
+  }
+  if (nearY <= 78 && Math.abs(Math.cos(heading)) > 0.4) {
+    const x = p.x + Math.sign(Math.cos(heading)) * DISPATCH.roadblockAhead;
+    if (x < 120 || x > WORLD.width - 120) return false;
+    setRoadblock(state, x, roadY, true);
+    return true;
+  }
+  return false;
+}
+
+/** A roadblock cruiser stands its ground until the line expires, the chase moves on, or
+ * the heat dies — then it pulls out and joins the pursuit like any other cruiser. */
+function updateRoadblockCar(state, car, dt) {
+  car.speed = 0;
+  car.brake = true;
+  const p = state.player;
+  const d = Math.hypot(p.x - car.x, p.y - car.y);
+  if (state.time > car.blockExpires || d > 640 || starsOf(state) === 0) {
+    car.roadblock = false;
+    initTrafficCar(state, car, car.x, car.y);
+    car.driver = 'police';
+  }
+}
+
 function updatePoliceCar(state, car, dt) {
   const city = state.city;
   const p = state.player;
@@ -342,9 +409,16 @@ function updatePoliceCar(state, car, dt) {
   let wantSpeed = 0;
   let wantAngle = car.angle;
   if (!officerOut) {
-    // Steer for the player; when a building blocks the way, aim for the crossing nearest him.
+    // Steer for where the player is heading, not where he is: lead the target by its own
+    // speed, scaled by the gap, so a fast getaway is cut off instead of chased from behind.
     let aimX = target.x;
     let aimY = target.y;
+    if (p.car) {
+      const lead = POLICE.leadTime * Math.min(1, d / 520);
+      aimX += Math.cos(p.car.angle) * p.car.speed * lead;
+      aimY += Math.sin(p.car.angle) * p.car.speed * lead;
+    }
+    // When a building blocks the way, aim for the crossing nearest the player instead.
     const aheadX = car.x + Math.cos(car.angle) * 60;
     const aheadY = car.y + Math.sin(car.angle) * 60;
     if (circleHitsSolid(city, aheadX, aheadY, 18) || !lineOfSight(city, car.x, car.y, target.x, target.y)) {
@@ -755,7 +829,10 @@ export function updateGame(state, input, actions, dt) {
   for (const car of state.cars) {
     if (car.dead) continue;
     if (car.driver === 'traffic') updateTrafficCar(state, car, dt);
-    else if (car.driver === 'police') updatePoliceCar(state, car, dt);
+    else if (car.driver === 'police') {
+      if (car.roadblock) updateRoadblockCar(state, car, dt);
+      else updatePoliceCar(state, car, dt);
+    }
     else if (car.driver !== 'player' && car.speed !== 0) {
       car.speed -= car.speed * 2.2 * dt;
       moveCarBody(state, car, dt, false);
@@ -783,9 +860,36 @@ export function updateGame(state, input, actions, dt) {
       state.wanted.heat = Math.max(0, state.wanted.heat - WANTED.decay * dt);
     }
   }
+  // Headquarters answers the wanted level three ways: a trickle of cruisers at one star,
+  // dispatch waves on a timer once the chase is real, and roadblocks across the road
+  // ahead once it is hot.
+  const stars = starsOf(state);
   const want = desiredPolice(state);
   const policeNow = state.cars.filter((c) => c.driver === 'police' && !c.dead).length;
-  if (policeNow < want && state.rng.chance(0.06 + starsOf(state) * 0.03)) spawnPolice(state);
+  state.dispatch.timer -= dt;
+  if (stars >= 2 && state.dispatch.timer <= 0 && policeNow < want + DISPATCH.waveSize) {
+    let sent = 0;
+    while (sent < DISPATCH.waveSize && policeNow + sent < want + DISPATCH.waveSize) {
+      spawnPolice(state);
+      sent += 1;
+    }
+    if (sent > 0) {
+      state.dispatch.wave += 1;
+      state.hooks.onDispatch('wave', sent);
+    }
+    state.dispatch.timer = DISPATCH.waveInterval;
+  } else if (policeNow < want && state.rng.chance(0.06 + stars * 0.03)) {
+    spawnPolice(state);
+  }
+  state.dispatch.blockTimer -= dt;
+  if (stars >= DISPATCH.roadblockStars && state.dispatch.blockTimer <= 0) {
+    if (tryRoadblock(state)) {
+      state.hooks.onDispatch('block', 2);
+      state.dispatch.blockTimer = DISPATCH.roadblockEvery;
+    } else {
+      state.dispatch.blockTimer = 1.5;
+    }
+  }
 
   // Clean-up: the dead and the distant leave the world.
   state.cars = state.cars.filter((car) => {

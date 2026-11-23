@@ -209,6 +209,7 @@ function completeStep(state) {
     addHeat(state, Math.max(0, 4 - state.wanted.heat) + 0.2);
     setPhone(state, 'Lena: Alarm\'s singing, love. Marina pier, the white boat — GO.', 6);
     state.hooks.onSound('cash');
+    state.hooks.onSound('alarm');
   }
   a.stepIndex += 1;
   if (a.stepIndex >= def.steps.length) {
